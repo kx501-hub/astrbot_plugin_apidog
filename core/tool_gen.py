@@ -262,4 +262,6 @@ async def execute_apidog_llm_tool(
             logger.exception("工具发送媒体到会话失败")
             for p in temp_paths:
                 Path(p).unlink(missing_ok=True)
-    return result.message or "接口已返回媒体，请告知用户已发送或请其使用指令重试。"
+    if result.media_url:
+        return f"媒体发送失败，链接：{result.media_url}"
+    return result.message or "接口已返回媒体但发送失败，且未提供链接。"
