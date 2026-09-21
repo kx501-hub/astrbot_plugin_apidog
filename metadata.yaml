@@ -3,5 +3,5 @@ display_name: ApiDog
 version: "1.5.3"
 author: "Kx501"
 desc: 低代码 API Web 管理平台。可视化配置任意 API 并自动注册指令或工具。支持媒体类数据、占位符、限流、认证、权限、计划任务等。
-repo: "https://github.com/Kx501/astrbot_plugin_apidog"
+repo: "https://github.com/kx501-hub/astrbot_plugin_apidog"
 tags: ["api", "管理", "低代码"]
