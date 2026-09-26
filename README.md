@@ -4,12 +4,12 @@
 
 ## 安装
 
-将本插件放入 AstrBot 的 `data/plugins/` 下（如 `data/plugins/astrbot_plugin_apidog/`），在管理面板中启用并安装依赖（httpx、apscheduler、fastapi、uvicorn；后两者用于配置管理 API）。
+将本插件放入 AstrBot 的 `data/plugins/` 下（如 `data/plugins/astrbot_plugin_apidog/`），在管理面板中启用并安装依赖（httpx、apscheduler）。
 
 ## 配置
 
 - **数据目录**：由 AstrBot 按插件目录名确定（如 `data/plugin_data/astrbot_plugin_apidog/`）。将 `sample_apis.json` 复制到该目录为 `apis.json` 并按需编辑。
-- **config.json**（可选）：复制 `sample_config.json` 为 `config.json`，配置全局默认超时、重试及可重试状态码。不创建则使用内置默认（超时 30 秒、不重试）。`retry_statuses` 默认 `[500, 502, 503, 429]`，可增加 408、504 等。配置管理 API 的密码哈希写在 `api_pwd_hash`（仅哈希，不存明文）；无此项时首次打开管理页会进入初始化设密。
+- **config.json**（可选）：复制 `sample_config.json` 为 `config.json`，配置全局默认超时、重试及可重试状态码。不创建则使用内置默认（超时 30 秒、不重试）。`retry_statuses` 默认 `[500, 502, 503, 429]`，可增加 408、504 等。管理页面沿用 AstrBot Dashboard 登录，不再单独设置密码。
 - **auth.json / groups.json**（可选）：复制 `sample_auth.json`、`sample_groups.json` 为 `auth.json`、`groups.json`，配置认证与用户组/群组（API 权限由组名引用）。
 
 ## 用法
@@ -57,27 +57,28 @@
 
 ## 配置管理前端
 
-- 启用插件后访问 **http://localhost:5787/** 即为配置页（端口可在 config.json 的 `api_port` 修改，改后保存即可生效）。
-- **首次使用**：若 config.json 中无 `api_pwd_hash`，会进入初始化页，设置一次密码（仅存 SHA-256 哈希，不存明文）。重载插件后密码不变，无需重新登录。
-- **登录**：输入初始化时设置的密码即可。前端与本地仅存密码哈希，请求头带哈希校验。
-- **忘记密码**：在 config.json 中删掉 `api_pwd_hash` 后刷新页面，会再次进入初始化页重新设密。
-- **后端**：读写 config/apis/schedules/groups/auth；插件启用时自动在配置端口启动。独立运行：`python -m api`（端口与数据目录从 config 读取）（数据目录为项目根下 **data**；不推荐直接用 `uvicorn api.app:app`，因无模块级 app）。
-- **改前端**：在 `frontend/` 下执行 `npm install && npm run build`，将 `dist` 提交或覆盖到插件中。
+- 在 AstrBot WebUI → 插件 → ApiDog → Pages → **配置管理** 打开。需要支持 Plugin Pages 和 `astrbot.api.web` 的 AstrBot 版本。
+- 页面通过 AstrBot bridge 调用插件 API，使用 Dashboard 登录身份，主题跟随 AstrBot。
+- 五类配置（config/apis/schedules/groups/auth）继续使用原有插件数据目录，无需重新导入。
+- 旧入口 `http://localhost:5787/` 已移除，不再启动独立 Web 服务。旧 `api_port` 和 `api_pwd_hash` 保留在磁盘以便回退，但新版忽略它们，页面也不返回旧登录哈希。
+- 保存接口后，指令或工具定义有变化时会延迟约 3 秒自动重载；计划任务保存后立即刷新。若页面报告已保存但生效失败，请在插件管理中重载并查看日志。
+- 修改前端后在 `frontend/` 执行 `npm ci`、`npm run build`，产物位于 `pages/settings/`，发布时必须包含该目录。首次增加 Pages 后需重载插件。
+
+## 分支约定
+
+- `main`：AstrBot 集成版，管理台通过 Plugin Pages 使用。
+- `master`：保留迁移前的独立 Web 管理版（仍包含旧 AstrBot 插件入口）。需要独立服务时使用此分支。
 
 ## 项目结构
 
 | 目录/文件 | 说明 |
 |-----------|------|
 | core/ | 核心逻辑（解析、请求、响应、权限、限流、认证），仅依赖 httpx |
-| api/ | 配置管理后端（FastAPI） |
+| api/ | AstrBot Pages 配置管理 API |
 | runtime/ | 计划任务调度（APScheduler） |
-| frontend/ | 配置管理前端（React + Vite），产物 `frontend/dist` |
+| frontend/ | 配置管理前端（React + Vite），产物 `pages/settings` |
 | main.py | AstrBot 插件入口 |
 | sample_*.json | 各配置示例 |
-
-## 迁移到其他平台
-
-`core/` 无 bot 依赖。迁移时保留 `core/` 及数据目录结构，在新入口中：从平台事件解析用户输入与 user_id/group_id/is_admin，构造 `CallContext`，调用 `core.run(data_dir, raw_args, context)`，再根据返回的 `CallResult` 调用该平台的发消息 API。
 
 ## 开发部署指南
 见 [DEVELOPMENT.md](/DEVELOPMENT.md)

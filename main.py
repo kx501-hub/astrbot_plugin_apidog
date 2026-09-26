@@ -4,20 +4,18 @@
 from __future__ import annotations
 
 import asyncio
-import threading
 import tempfile
 from pathlib import Path
 from typing import Any, List
 
-import uvicorn
 from astrbot.api import logger as _ab_logger
 from astrbot.api.event import AstrMessageEvent, MessageChain, filter
 from astrbot.api.star import Context, Star, StarTools, register
 from astrbot.api.message_components import Image, Plain, Record, Video
 
-from .api import create_app
+from .api import PageAPI
 from .core import CallContext, CallResult, run
-from .core.loader import get_api_port, load_apis, load_config
+from .core.loader import load_apis, load_config
 from .core.log_helper import set_apidog_logger
 from .core.command_gen import block_content_is_pass, inject_commands_into_main
 from .core.tool_gen import (
@@ -35,14 +33,7 @@ class ApiDogStar(Star):
         set_apidog_logger(_ab_logger)
         self._data_dir = Path(StarTools.get_data_dir(None))
         start_scheduler(self._data_dir, send_message=self._send_scheduled_result)
-        self._api_app = create_app(self._data_dir)
-        port = get_api_port(self._data_dir)
-        config = uvicorn.Config(
-            self._api_app, host="0.0.0.0", port=port, access_log=False
-        )
-        self._uvicorn_server = uvicorn.Server(config)
-        self._uvicorn_thread = threading.Thread(target=self._uvicorn_server.run, daemon=True)
-        self._uvicorn_thread.start()
+        self._page_api = PageAPI(context, self._data_dir)
         main_path = Path(__file__).resolve()
         try:
             apis = load_apis(self._data_dir)
@@ -71,12 +62,12 @@ class ApiDogStar(Star):
                 _ab_logger.exception("首次加载写回 LLM 工具失败")
 
     async def initialize(self) -> None:
-        """注册保存后自动重载当前插件的回调（供配置页 PUT 后调用）。"""
+        """注册保存后自动重载当前插件的回调（供配置页保存后调用）。"""
         try:
             pm = getattr(self.context, "_star_manager", None)
             if pm is not None and getattr(self, "name", None):
                 loop = asyncio.get_running_loop()
-                self._api_app.state.reload_trigger = (pm, self.name, loop)
+                self._page_api.reload_trigger = (pm, self.name)
                 if getattr(self, "_pending_reload_after_inject", False):
                     try:
                         plugin_name = self.name
@@ -96,13 +87,9 @@ class ApiDogStar(Star):
             _ab_logger.debug("ApiDog 未设置自动重载回调: %s", exc_info=True)
 
     async def terminate(self) -> None:
-        """Plugin unload: stop scheduler and uvicorn."""
+        """Stop scheduling and pending page-triggered reloads."""
         stop_scheduler()
-        if getattr(self, "_uvicorn_server", None) is not None:
-            self._uvicorn_server.should_exit = True
-            thread = getattr(self, "_uvicorn_thread", None)
-            if thread is not None and thread.is_alive():
-                await asyncio.to_thread(thread.join, timeout=3.0)
+        await self._page_api.close()
         _ab_logger.info("ApiDog 服务已停止")
 
     def _result_to_chain(self, result: CallResult) -> tuple[List[Any], List[str]]:

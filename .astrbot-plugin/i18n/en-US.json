@@ -1,0 +1,8 @@
+{
+  "pages": {
+    "settings": {
+      "title": "Configuration",
+      "description": "Manage APIs, schedules, credentials and permission groups."
+    }
+  }
+}

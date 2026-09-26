@@ -1,0 +1,8 @@
+{
+  "pages": {
+    "settings": {
+      "title": "配置管理",
+      "description": "管理接口、计划任务、认证和权限组。"
+    }
+  }
+}

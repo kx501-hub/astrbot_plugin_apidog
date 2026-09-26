@@ -1,47 +1,27 @@
 # 开发部署指南
 
-## 环境准备
+`main` 面向 AstrBot，旧的独立 Web 管理服务保留在 `master`。
 
-- Python 3.10+
-- Node 18+（前端开发时）
-- 建议使用虚拟环境：`python -m venv .venv`，激活后 `pip install -r requirements.txt`
+## 环境
 
-## 仅配置管理（后端 + 前端）
+- 使用支持 Plugin Pages 和 `astrbot.api.web` 的 AstrBot 环境，安装 `requirements.txt`。
+- 前端使用 Node.js 22.12+ 和 npm；依赖版本由 `frontend/package-lock.json` 锁定。
 
-不跑 AstrBot，只跑配置管理 API 和前端，用于改接口/计划/认证等配置页。
+## 构建与联调
 
-1. **数据目录**（可选）  
-   在项目根下建 `data/`，可放入 `config.json`、`apis.json` 等；不建则使用内置默认（端口 5787）。  
-   若需自定义端口，在 `data/config.json` 中设置 `api_port`（如 5787）。
+1. 在 `frontend/` 执行 `npm ci`，然后执行 `npm run build`。
+2. 构建输出为 `pages/settings/index.html` 和相邻静态资源，发布插件时一起携带。
+3. 将插件安装到 AstrBot，启用或重载，从插件详情的「配置管理」打开。
+4. 修改前端后重新构建并刷新 Page；修改后端后重载插件。
 
-2. **启动后端**  
-   在项目根执行：
-   ```bash
-   python -m api
-   ```
-   后端会在 `http://0.0.0.0:5787` 提供 API 和静态页面（若存在 `frontend/dist`）。
+页面依赖 AstrBot 注入的 bridge，直接打开 Vite 开发地址不能读写配置。使用 hash 路由和相对资源路径，刷新子页面不会请求不存在的服务端路径。主题由宿主同步，不使用浏览器存储保存登录或侧栏状态。
 
-3. **前端开发（热更新）**  
-   另开终端，在 `frontend/` 下：
-   ```bash
-   npm install
-   npm run dev
-   ```
-   访问 `http://localhost:5173`，前端会请求 `VITE_API_URL`（默认 `http://localhost:5787/api`）。  
-   登录密码见后端启动日志中的「Config API 临时密码」。
+## 后端约定
 
-4. **前端构建**  
-   修改前端后若要给插件用或生产部署：
-   ```bash
-   cd frontend && npm run build
-   ```
-   产物在 `frontend/dist/`，后端会自动托管该目录下的 `index.html` 与 `assets/`。
+`api.PageAPI` 注册 `/{插件名}/{资源}` GET 和 `/{插件名}/{资源}/save` POST。资源固定为 config、apis、schedules、groups、auth；使用 AstrBot Dashboard 的认证和 `astrbot.api.web` 的请求、响应接口。
 
-## 在 AstrBot 里联调
+数据目录和 JSON 格式沿用旧版。写入采用临时文件替换，保存后清理对应缓存；接口定义变化时自动重载插件，计划任务保存后刷新调度。旧端口与登录哈希不再生效，磁盘值保留用于回退。
 
-1. 将本项目复制或软链到 AstrBot 的插件目录，例如：
-   `data/plugins/astrbot_plugin_apidog/`
-2. 在 AstrBot 管理面板中启用 ApiDog 并安装依赖。
-3. 插件会使用 `data/plugin_data/astrbot_plugin_apidog/` 作为数据目录，配置管理端口仍由该目录下 `config.json` 的 `api_port` 决定（默认 5787）。
+## 针对性检查
 
-如需边改边看配置页，可在本仓库 `frontend/` 跑 `npm run dev`，在浏览器访问 5173，并把 `.env.development` 中的 `VITE_API_URL` 指到 AstrBot 启动后的配置 API 地址（同上端口）。
+运行 `python -m unittest discover -s tests -v`（仅需标准库，模拟宿主和调度器边界），并在 `frontend/` 执行 `npm run build`。上线前在实际 Dashboard 检查页面入口、切换主题、各配置页保存及插件重载。

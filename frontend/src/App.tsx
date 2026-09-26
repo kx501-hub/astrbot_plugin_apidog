@@ -4,19 +4,6 @@ import { getConfig } from "./api";
 import { HeaderActionContext } from "./HeaderActionContext";
 import "./App.css";
 
-const SIDEBAR_STORAGE_KEY = "apidog_sidebar_collapsed";
-
-function getInitialCollapsed(): boolean {
-  try {
-    const v = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    if (v === "true") return true;
-    if (v === "false") return false;
-  } catch {
-    /* ignore */
-  }
-  return true;
-}
-
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -76,17 +63,9 @@ function ConnectionBanner() {
 }
 
 export default function App() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialCollapsed);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [headerAction, setHeaderAction] = useState<React.ReactNode>(null);
   const location = useLocation();
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed));
-    } catch {
-      /* ignore */
-    }
-  }, [sidebarCollapsed]);
 
   const toggleSidebar = () => setSidebarCollapsed((c) => !c);
   const closeSidebar = () => setSidebarCollapsed(true);

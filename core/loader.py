@@ -160,26 +160,6 @@ def load_config(data_dir: Path) -> dict[str, Any]:
     return out
 
 
-DEFAULT_API_PORT = 5787
-
-
-def get_api_port(data_dir: Path) -> int:
-    """Read api_port from config.json; must be 1-65535, else return DEFAULT_API_PORT."""
-    raw = load_json(data_dir / "config.json", {})
-    if not isinstance(raw, dict):
-        return DEFAULT_API_PORT
-    val = raw.get("api_port")
-    if val is None:
-        return DEFAULT_API_PORT
-    try:
-        port = int(val)
-    except (TypeError, ValueError):
-        return DEFAULT_API_PORT
-    if 1 <= port <= 65535:
-        return port
-    return DEFAULT_API_PORT
-
-
 def merge_client_options(global_config: dict[str, Any], api: dict) -> dict[str, Any]:
     """Merge global config with per-API overrides. Returns effective timeout_seconds and retry."""
     timeout = api.get("timeout_seconds")

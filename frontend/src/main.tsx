@@ -1,13 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { HashRouter } from "react-router-dom";
 import "./index.css";
-import AuthGuard from "./AuthGuard.tsx";
+import PageRoutes from "./PageRoutes.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
-      <AuthGuard />
-    </BrowserRouter>
+    <HashRouter>
+      <PageRoutes />
+    </HashRouter>
   </StrictMode>
 );
